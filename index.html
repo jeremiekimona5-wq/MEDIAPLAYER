@@ -185,6 +185,14 @@
 					<div class="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 lg:grid-cols-[minmax(0,1fr)_auto_7rem]">
 					<div class="flex min-w-0 items-center gap-3">
 						<div class="grid size-11 shrink-0 place-items-center rounded-sm border border-brass/25 bg-mahogany-900 text-brass"><i data-lucide="disc-3" class="size-5" aria-hidden="true"></i></div>
+						<svg id="vu-meter" class="hidden size-11 shrink-0 rounded-sm border border-brass/25 bg-parchment sm:block" viewBox="0 0 44 44" role="img" aria-label="VU-mètre analogique de niveau sonore">
+							<path d="M 5.5 24 A 23 23 0 0 1 38.5 24" fill="none" stroke="#3a2f27" stroke-width="1" opacity="0.55" />
+							<path d="M 29.1 18.1 A 23 23 0 0 1 38.5 24" fill="none" stroke="#b3392f" stroke-width="2.5" />
+							<g id="vu-ticks" stroke="#3a2f27"></g>
+							<text x="22" y="31" text-anchor="middle" font-size="4.5" letter-spacing="0.8" fill="#5a4634" font-family="Georgia, serif">VU</text>
+							<line id="vu-needle" x1="22" y1="40" x2="22" y2="19.5" stroke="#b3392f" stroke-width="1.6" stroke-linecap="round" style="transform: rotate(-46deg); transform-origin: 22px 40px;" />
+							<circle cx="22" cy="40" r="2.2" fill="#c9a96f" />
+						</svg>
 						<div class="min-w-0"><p id="current-track-title" class="truncate text-sm font-medium text-paper">Aucune piste sélectionnée</p><p id="mini-player-subtitle" class="mt-1 truncate text-xs text-parchment/50">Importez votre collection</p></div>
 					</div>
 					<div class="flex items-center justify-center gap-1 sm:gap-2">
@@ -675,6 +683,97 @@
 					}
 				}
 
+				/* ---------------------------------------------------------------------
+				   VU-MÈTRE ANALOGIQUE : aiguille SVG pilotée par le signal reel du
+				   lecteur via l'AnalyserNode du contexte Web Audio (réutilise crackleContext).
+				   ------------------------------------------------------------------ */
+				const vuMeter = document.getElementById("vu-meter");
+				const vuTicks = document.getElementById("vu-ticks");
+				const vuNeedle = document.getElementById("vu-needle");
+				const VU_SWEEP_DEGREES = 92; // Course de l'aiguille : -46° (repos) à +46° (saturé)
+				let vuSource = null;
+				let vuAnalyser = null;
+				let vuBuffer = null;
+				let vuLevel = 0;
+				let vuRafId = 0;
+
+				// Graduations de l'échelle, générées une fois (angles en degrés depuis la verticale)
+				for (const [angle, isMajor] of [[-46, 1], [-34, 0], [-23, 1], [-12, 0], [0, 1], [12, 0], [23, 1], [34, 0], [46, 1]]) {
+					const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+					const radians = angle * Math.PI / 180;
+					const outerRadius = 23;
+					const innerRadius = isMajor ? 19 : 21.2;
+					tick.setAttribute("x1", (22 + outerRadius * Math.sin(radians)).toFixed(2));
+					tick.setAttribute("y1", (40 - outerRadius * Math.cos(radians)).toFixed(2));
+					tick.setAttribute("x2", (22 + innerRadius * Math.sin(radians)).toFixed(2));
+					tick.setAttribute("y2", (40 - innerRadius * Math.cos(radians)).toFixed(2));
+					tick.setAttribute("opacity", isMajor ? "0.9" : "0.6");
+					tick.setAttribute("stroke-width", isMajor ? "1.2" : "1");
+					vuTicks.append(tick);
+				}
+
+				/**
+				 * Route le lecteur audio vers un AnalyserNode (une seule fois par session).
+				 * Un élément branché dans un graphe Web Audio ne sort plus seul : il faut
+				 * rebrancher la source vers la destination pour que la musique reste audible.
+				 */
+				function ensureVUMeter() {
+					if (!vuMeter) return;
+					const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+					if (!AudioContextConstructor) return;
+					try {
+						if (!crackleContext) crackleContext = new AudioContextConstructor();
+						crackleContext.resume();
+						if (!vuSource) {
+							vuSource = crackleContext.createMediaElementSource(audioEngine);
+							vuAnalyser = crackleContext.createAnalyser();
+							vuAnalyser.fftSize = 512;
+							vuBuffer = new Uint8Array(vuAnalyser.fftSize);
+							vuSource.connect(vuAnalyser);
+							vuSource.connect(crackleContext.destination);
+						}
+					} catch {
+						vuAnalyser = null; // VU-mètre indisponible : la lecture continue normalement
+					}
+				}
+
+				/**
+				 * Animation de l'aiguille : RMS du signal + ballistique analogique
+				 * (attaque rapide, relâchement lent), puis repos quand la lecture cesse.
+				 */
+				function renderVUNeedle() {
+					if (!audioEngine.paused) {
+						vuAnalyser.getByteTimeDomainData(vuBuffer);
+						let sum = 0;
+						for (const sample of vuBuffer) {
+							const centered = (sample - 128) / 128;
+							sum += centered * centered;
+						}
+						const rms = Math.sqrt(sum / vuBuffer.length);
+						const target = Math.min(1, rms * 3.4);
+						vuLevel += (target - vuLevel) * (target > vuLevel ? 0.42 : 0.075);
+					} else {
+						// En pause, l'analyser fige son dernier buffer : on décroît nous-mêmes
+						vuLevel *= 0.9;
+					}
+					if (vuNeedle) vuNeedle.style.transform = `rotate(${(-46 + vuLevel * VU_SWEEP_DEGREES).toFixed(2)}deg)`;
+					if (audioEngine.paused && vuLevel < 0.002) {
+						vuRafId = 0; // Aiguille au repos : on arrête la boucle
+						return;
+					}
+					vuRafId = requestAnimationFrame(renderVUNeedle);
+				}
+
+				/**
+				 * Démarre la boucle du VU-mètre si l'analyser est prêt et si l'utilisateur
+				 * n'a pas demandé une réduction des animations.
+				 */
+				function startVUNeedle() {
+					if (!vuMeter || !vuAnalyser || vuRafId) return;
+					if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+					vuRafId = requestAnimationFrame(renderVUNeedle);
+				}
+
 				/**
 				 * Démarre la lecture audio avec effet de craquement préalable si la piste est au début.
 				 */
@@ -688,6 +787,7 @@
 					if (request !== playRequest) return;
 
 					try {
+						ensureVUMeter();
 						await audioEngine.play();
 						playerStatus.textContent = `Lecture de ${currentTrack.name}.`;
 					} catch {
@@ -1886,6 +1986,7 @@
 				// Événements du moteur audio principal
 				audioEngine.addEventListener("play", () => {
 					isPlaybackStarting = false;
+					startVUNeedle();
 					updatePlaybackUI(true);
 					playerStatus.textContent = `Lecture de ${currentTrack.name}.`;
 				});
