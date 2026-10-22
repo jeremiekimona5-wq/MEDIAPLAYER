@@ -2021,7 +2021,9 @@
 				   Raccourcis clavier globaux, synchronisés avec l'état des boutons :
 				   Space = lecture/pause, ⇧+←/→ = piste précédente/suivante,
 				   ←/→ = reculer/avancer de 5 s, ↑/↓ = volume ±5 %.
-				   Désactivés quand le focus est dans un champ ou sur un contrôle
+				   Les touches multimédias du clavier sont aussi branchées :
+				   MediaPlayPause, MediaTrackNext/Previous, MediaVolumeUp/Down, MediaStop.
+				   Désactivées quand le focus est dans un champ ou sur un contrôle
 				   nativement conforme (sliders, onglets, boutons pour Space).
 				   ------------------------------------------------------------------ */
 				window.addEventListener("keydown", (event) => {
@@ -2030,26 +2032,37 @@
 					if (!(target instanceof Element)) return;
 					const tag = target.tagName;
 					if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || target.isContentEditable) return;
-					const isToggle = event.key === " ";
-					if (isToggle && (tag === "BUTTON" || tag === "A")) return; // l'activation native prend le pas
-					if (target.closest('[role="tablist"]')) return; // les flèches y changent déjà de vue
-					if (isToggle && !togglePlaybackButton.disabled) {
+					const key = event.key;
+					// Les flèches changent déjà de vue dans la tabliste ; les touches
+					// multimédias, elles, restent toujours opérationnelles
+					if (target.closest('[role="tablist"]') && key.startsWith("Arrow")) return;
+					if (key === " " && (tag === "BUTTON" || tag === "A")) return; // l'activation native prend le pas
+					if (key === " " || key === "MediaPlayPause") {
+						if (!togglePlaybackButton.disabled) {
+							event.preventDefault();
+							togglePlayback();
+						}
+					} else if (key === "MediaStop" && !audioEngine.paused) {
+						audioEngine.pause();
+						playerStatus.textContent = "Lecture arrêtée.";
+					} else if (key === "MediaTrackNext" || (key === "ArrowRight" && event.shiftKey)) {
 						event.preventDefault();
-						togglePlayback();
-					} else if ((event.key === "ArrowRight" || event.key === "ArrowLeft") && event.shiftKey) {
+						if (!nextTrackButton.disabled) moveToNextTrack();
+					} else if (key === "MediaTrackPrevious" || (key === "ArrowLeft" && event.shiftKey)) {
 						event.preventDefault();
-						if (event.key === "ArrowRight" && !nextTrackButton.disabled) moveToNextTrack();
-						else if (event.key === "ArrowLeft" && !previousTrackButton.disabled) moveToPreviousTrack();
-					} else if ((event.key === "ArrowRight" || event.key === "ArrowLeft") && !seekSlider.disabled) {
+						if (!previousTrackButton.disabled) moveToPreviousTrack();
+					} else if ((key === "ArrowRight" || key === "ArrowLeft") && !seekSlider.disabled) {
 						event.preventDefault();
 						const step = 5;
+						const direction = key === "ArrowRight" ? step : -step;
 						const duration = Number.isFinite(audioEngine.duration) ? audioEngine.duration : 0;
-						audioEngine.currentTime = Math.min(Math.max(0, audioEngine.currentTime + (event.key === "ArrowRight" ? step : -step)), duration);
-						playerStatus.textContent = `${event.key === "ArrowRight" ? "Avancé" : "Reculé"} de ${step} secondes.`;
-					} else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+						audioEngine.currentTime = Math.min(Math.max(0, audioEngine.currentTime + direction), duration);
+						playerStatus.textContent = `${direction > 0 ? "Avancé" : "Reculé"} de ${step} secondes.`;
+					} else if (key === "ArrowUp" || key === "ArrowDown" || key === "MediaVolumeUp" || key === "MediaVolumeDown") {
 						event.preventDefault();
+						const isLouder = key === "ArrowUp" || key === "MediaVolumeUp";
 						const current = Number(volumeSlider.value);
-						const nextVolume = Math.min(100, Math.max(0, current + (event.key === "ArrowUp" ? 5 : -5)));
+						const nextVolume = Math.min(100, Math.max(0, current + (isLouder ? 5 : -5)));
 						if (nextVolume === current) return;
 						volumeSlider.value = String(nextVolume);
 						volumeSlider.dispatchEvent(new Event("input", { bubbles: true }));
