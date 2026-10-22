@@ -1,0 +1,39 @@
+name: Build web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le projet
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Installer Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Installer les dépendances JavaScript
+        run: npm ci
+      - name: Vérifier la vulnérabilité du lockfile (niveau high)
+        run: npm audit --audit-level=high
+      - name: Construire le bundle web
+        run: npm run build
+      - name: Vérifier l'absence de ressources distantes dans le bundle
+        shell: bash
+        run: |
+          if grep -RE "(jsdelivr|unpkg|cdn\.|fonts\.googleapis|fonts\.gstatic)" dist/; then
+            echo "Ressource externe détectée dans le bundle web : interdit."
+            exit 1
+          fi
+      - name: Publier le bundle en artefact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sillon-web-${{ github.sha }}
+          path: dist/
