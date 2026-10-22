@@ -9,6 +9,7 @@
 		<link rel="stylesheet" href="/src/style.css" />
 	</head>
 		<body class="min-h-screen bg-mahogany-950 font-interface text-parchment antialiased selection:bg-sage selection:text-mahogany-950">
+			<a href="#audio" class="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:inline-flex focus:h-10 focus:items-center focus:rounded-sm focus:bg-parchment focus:px-3 focus:text-sm focus:font-semibold focus:text-mahogany-950">Aller au contenu principal</a>
 			<div class="min-h-screen pb-28 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
 				<aside class="border-b border-brass/20 bg-mahogany-950/65 px-5 py-5 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
 					<a href="#audio" class="inline-flex items-center gap-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sage">
@@ -59,7 +60,7 @@
 					<section class="relative isolate grid content-center justify-items-center gap-8 overflow-hidden py-10 text-center lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.75fr)] lg:items-center lg:gap-12 lg:text-left" aria-labelledby="empty-title">
 						<div id="cover-backdrop" class="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-0 transition-opacity duration-700" aria-hidden="true"><div id="cover-backdrop-image" class="absolute inset-0 scale-110 opacity-40 blur-3xl" style="background-position: center; background-size: cover;"></div><div class="absolute inset-0 bg-mahogany-950/65"></div></div>
 						<figure class="relative z-10 flex w-full flex-col items-center lg:order-2">
-							<div class="relative aspect-square w-[min(55vw,18rem)] sm:w-[min(38vw,20rem)]">
+							<div class="relative aspect-square w-[min(55vw,18rem)] sm:w-[min(38vw,20rem)]" aria-hidden="true">
 								<div id="tone-arm" class="tone-arm absolute -right-[3%] top-[5%] z-10 h-[49%] w-2 rounded-full bg-brass shadow-md after:absolute after:-bottom-1 after:left-1/2 after:size-3 after:-translate-x-1/2 after:rounded-full after:border-2 after:border-mahogany-900 after:bg-brass after:content-['']" aria-hidden="true"></div>
 								<div id="vinyl-disc" class="vinyl-disc relative aspect-square w-full rounded-full">
 								<div id="vinyl-label" class="vinyl-label absolute left-1/2 top-1/2 grid aspect-square w-[34%] -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full text-center text-mahogany-950">
@@ -198,6 +199,7 @@
 					<div class="flex items-center justify-center gap-1 sm:gap-2">
 						<button id="shuffle-button" type="button" disabled aria-label="Lecture aléatoire désactivée" aria-pressed="false" class="hidden size-9 cursor-not-allowed place-items-center rounded-full text-parchment/35 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage sm:grid"><i data-lucide="shuffle" class="size-4" aria-hidden="true"></i></button>
 							<button id="queue-button" type="button" disabled aria-label="Lecture automatique activée" aria-pressed="true" class="hidden size-9 cursor-not-allowed place-items-center rounded-full text-sage transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage sm:grid"><i data-lucide="list-music" class="size-4" aria-hidden="true"></i></button>
+							<button id="add-current-playlist" type="button" disabled aria-label="Ajouter à la playlist : aucun morceau en cours" class="hidden size-9 cursor-not-allowed place-items-center rounded-full text-parchment/35 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage sm:grid"><i data-lucide="list-plus" class="size-4" aria-hidden="true"></i></button>
 						<button id="previous-track" type="button" disabled aria-label="Piste précédente" class="grid size-9 cursor-not-allowed place-items-center rounded-full text-parchment/35 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"><i data-lucide="skip-back" class="size-4" aria-hidden="true"></i></button>
 						<button id="toggle-playback" type="button" disabled aria-label="Lecture" class="grid size-11 cursor-not-allowed place-items-center rounded-full bg-sage/35 text-mahogany-950/50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-parchment"><i id="play-icon" data-lucide="play" class="size-5 fill-current" aria-hidden="true"></i><i id="pause-icon" data-lucide="pause" class="hidden size-5 fill-current" aria-hidden="true"></i></button>
 						<button id="next-track" type="button" disabled aria-label="Piste suivante" class="grid size-9 cursor-not-allowed place-items-center rounded-full text-parchment/35 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"><i data-lucide="skip-forward" class="size-4" aria-hidden="true"></i></button>
@@ -205,7 +207,7 @@
 					</div>
 					<div class="hidden h-16 items-center justify-end gap-2 lg:flex">
 						<i data-lucide="volume-2" class="size-4 text-parchment/55" aria-hidden="true"></i>
-						<input id="volume-slider" aria-label="Volume" type="range" min="0" max="100" value="65" class="h-14 w-5 cursor-pointer accent-sage [writing-mode:vertical-lr] [direction:rtl] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage" />
+						<input id="volume-slider" aria-label="Volume" type="range" min="0" max="100" value="65" aria-orientation="vertical" class="h-14 w-5 cursor-pointer accent-sage [writing-mode:vertical-lr] [direction:rtl] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage" />
 						<output id="volume-value" for="volume-slider" class="w-8 text-right text-xs tabular-nums text-parchment/45">65%</output>
 					</div>
 					</div>
@@ -326,6 +328,7 @@
 				const nextTrackButton = document.getElementById("next-track");
 				const shuffleButton = document.getElementById("shuffle-button");
 				const queueButton = document.getElementById("queue-button");
+				const addCurrentPlaylistButton = document.getElementById("add-current-playlist");
 				const repeatButton = document.getElementById("repeat-button");
 				const seekSlider = document.getElementById("seek-slider");
 				const volumeSlider = document.getElementById("volume-slider");
@@ -610,6 +613,26 @@
 					seekSlider.classList.toggle("cursor-not-allowed", seekSlider.disabled);
 					seekSlider.classList.toggle("cursor-pointer", !seekSlider.disabled);
 					seekSlider.classList.toggle("opacity-45", seekSlider.disabled);
+					updateAddCurrentPlaylistButton();
+				}
+
+				/**
+				 * État du bouton d'ajout/retrait du morceau en cours à la playlist ciblée.
+				 */
+				function updateAddCurrentPlaylistButton() {
+					const playlist = playlists.find((item) => item.id === playlistTarget.value) || playlists[0];
+					const canAct = Boolean(currentTrack) && Boolean(playlist);
+					addCurrentPlaylistButton.disabled = !canAct;
+					addCurrentPlaylistButton.classList.toggle("cursor-not-allowed", !canAct);
+					addCurrentPlaylistButton.classList.toggle("cursor-pointer", canAct);
+					addCurrentPlaylistButton.classList.toggle("text-parchment/35", !canAct);
+					addCurrentPlaylistButton.classList.toggle("hover:text-sage", canAct);
+					const inPlaylist = canAct && playlist.trackKeys.has(getTrackQueueKey(currentTrack));
+					addCurrentPlaylistButton.setAttribute("aria-label", !currentTrack
+						? "Ajouter à la playlist : aucun morceau en cours"
+						: !playlist
+							? "Ajouter à la playlist : créez d'abord une playlist"
+							: `${inPlaylist ? "Retirer de" : "Ajouter à"} la playlist ${playlist.name} : ${currentTrack.name}`);
 				}
 
 				/**
@@ -1127,6 +1150,9 @@
 						deckA.audio.pause();
 						deckB.audio.pause();
 					}
+					// Annonce du changement de mode aux lecteurs d'écran
+					const modeLabels = { audio: "audio", video: "vidéo", mix: "Mix" };
+					playerStatus.textContent = `Mode ${modeLabels[mode]} activé.`;
 				}
 
 				/* ==========================================================================
@@ -1506,6 +1532,20 @@
 					}
 					renderLibraryView();
 				}
+
+				// Navigation clavier entre les onglets de vue (flèches, motif WAI-ARIA Tabs)
+				document.querySelector('[role="tablist"][aria-label="Vues de la bibliothèque"]')?.addEventListener("keydown", (event) => {
+					const directions = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+					const direction = directions[event.key];
+					if (!direction) return;
+					event.preventDefault();
+					const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]')];
+					const current = tabs.indexOf(document.activeElement);
+					if (current < 0) return;
+					const next = tabs[(current + direction + tabs.length) % tabs.length];
+					next.focus();
+					next.click(); // Activation automatique au déplacement, motif Tabs WAI-ARIA
+				});
 
 				/**
 				 * Crée un élément HTML de ligne pour afficher une piste dans une liste.
@@ -1981,6 +2021,23 @@
 					queueMode = !queueMode;
 					updateQueueButton();
 					playerStatus.textContent = queueMode ? "Lecture automatique activée." : "Lecture automatique désactivée.";
+				});
+
+				// Ajout/retrait de la piste en cours à la playlist ciblée (menu « Ajouter à… »)
+				addCurrentPlaylistButton.addEventListener("click", () => {
+					const playlist = playlists.find((item) => item.id === playlistTarget.value) || playlists[0];
+					if (!playlist || !currentTrack) return;
+					const key = getTrackQueueKey(currentTrack);
+					if (playlist.trackKeys.has(key)) {
+						playlist.trackKeys.delete(key);
+						playerStatus.textContent = `${currentTrack.name} retiré de la playlist ${playlist.name}.`;
+					} else {
+						playlist.trackKeys.add(key);
+						playerStatus.textContent = `${currentTrack.name} ajouté à la playlist ${playlist.name}.`;
+					}
+					savePlaylists();
+					renderLibraryView();
+					updateAddCurrentPlaylistButton();
 				});
 
 				// Événements du moteur audio principal
