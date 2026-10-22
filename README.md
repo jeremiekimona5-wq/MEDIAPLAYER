@@ -41,4 +41,10 @@ git push origin v1.0.0
 
 Les fichiers `.msi` et `.exe` seront alors téléchargeables depuis la page Releases du dépôt.
 
-Les polices, styles Tailwind et icônes Lucide de la version actuelle sont chargés depuis des CDN ; une connexion Internet est nécessaire pour obtenir le rendu visuel complet.
+Les polices, le CSS Tailwind et les icônes Lucide sont intégrés au projet (auto-hébergés dans `public/` et compilés par Vite) : l'application fonctionne entièrement hors ligne, sans CDN externe.
+
+Pour rafraîchir les polices auto-hébergées si les versions Google Fonts changent :
+
+```powershell
+node scripts/vendor-fonts.mjs
+```

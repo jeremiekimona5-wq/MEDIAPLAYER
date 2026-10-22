@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+	--color-mahogany-950: oklch(0.2 0.027 38);
+	--color-mahogany-900: oklch(0.27 0.045 42);
+	--color-mahogany-800: oklch(0.36 0.055 43);
+	--color-parchment: oklch(0.92 0.04 85);
+	--color-paper: oklch(0.96 0.028 85);
+	--color-sage: oklch(0.69 0.07 145);
+	--color-brass: oklch(0.72 0.09 81);
+	--font-display: "Fraunces", Georgia, serif;
+	--font-interface: "Chivo", sans-serif;
+}
+
+@layer base {
+	body {
+		background-image:
+			repeating-linear-gradient(92deg, transparent 0, transparent 38px, oklch(1 0 0 / 0.018) 39px, transparent 41px),
+			radial-gradient(ellipse at 50% 0%, var(--color-mahogany-800), var(--color-mahogany-950) 72%);
+	}
+}
+
+.vinyl-disc {
+	background:
+		radial-gradient(circle, #c9a96f 0 5%, transparent 5.4%),
+		radial-gradient(circle, #28211d 0 18%, transparent 18.4%),
+		repeating-radial-gradient(circle, #302823 0 2px, #54483b 3px, #25201c 4px);
+	box-shadow: 0 26px 70px oklch(0 0 0 / 0.42), inset 0 0 0 1px oklch(1 0 0 / 0.12);
+}
+
+.vinyl-label {
+	background: radial-gradient(circle at 36% 28%, #a6ad83, #777d5d 78%);
+	box-shadow: 0 0 0 5px #28211d, 0 0 0 6px oklch(1 0 0 / 0.13);
+}
+
+.vinyl-disc.is-playing {
+	animation: vinyl-spin 1.8s linear infinite;
+}
+
+.media-spinner {
+	animation: vinyl-spin 0.8s linear infinite;
+}
+
+.tone-arm {
+	transform: rotate(27deg);
+	transform-origin: 50% 8%;
+	transition: transform 700ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.tone-arm.is-lowered {
+	transform: rotate(9deg);
+}
+
+@keyframes vinyl-spin {
+	to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vinyl-disc.is-playing { animation: none; }
+	.media-spinner { animation: none; }
+	.tone-arm { transition-duration: 0.01ms; }
+}

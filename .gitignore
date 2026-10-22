@@ -2,3 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 *.log
+rustup-init.exe
+__pycache__/
+*.pyc
+validation/

@@ -12,7 +12,10 @@
 		"desktop:build": "tauri build"
 	},
 	"devDependencies": {
+		"@tailwindcss/vite": "^4.3.3",
 		"@tauri-apps/cli": "^2.0.0",
+		"lucide": "^1.61.0",
+		"tailwindcss": "^4.3.3",
 		"vite": "^6.0.0"
 	}
 }

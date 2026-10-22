@@ -5,72 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="theme-color" content="#f5efe4" />
 		<title>Media Player</title>
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet" />
-		<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-		<style type="text/tailwindcss">
-			@theme {
-				--color-mahogany-950: oklch(0.2 0.027 38);
-				--color-mahogany-900: oklch(0.27 0.045 42);
-				--color-mahogany-800: oklch(0.36 0.055 43);
-				--color-parchment: oklch(0.92 0.04 85);
-				--color-paper: oklch(0.96 0.028 85);
-				--color-sage: oklch(0.69 0.07 145);
-				--color-brass: oklch(0.72 0.09 81);
-				--font-display: "Fraunces", Georgia, serif;
-				--font-interface: "Chivo", sans-serif;
-			}
-
-			@layer base {
-				body {
-					background-image:
-						repeating-linear-gradient(92deg, transparent 0, transparent 38px, oklch(1 0 0 / 0.018) 39px, transparent 41px),
-						radial-gradient(ellipse at 50% 0%, var(--color-mahogany-800), var(--color-mahogany-950) 72%);
-				}
-			}
-
-			.vinyl-disc {
-				background:
-					radial-gradient(circle, #c9a96f 0 5%, transparent 5.4%),
-					radial-gradient(circle, #28211d 0 18%, transparent 18.4%),
-					repeating-radial-gradient(circle, #302823 0 2px, #54483b 3px, #25201c 4px);
-				box-shadow: 0 26px 70px oklch(0 0 0 / 0.42), inset 0 0 0 1px oklch(1 0 0 / 0.12);
-			}
-
-			.vinyl-label {
-				background: radial-gradient(circle at 36% 28%, #a6ad83, #777d5d 78%);
-				box-shadow: 0 0 0 5px #28211d, 0 0 0 6px oklch(1 0 0 / 0.13);
-			}
-
-			.vinyl-disc.is-playing {
-				animation: vinyl-spin 1.8s linear infinite;
-			}
-
-			.media-spinner {
-				animation: vinyl-spin 0.8s linear infinite;
-			}
-
-			.tone-arm {
-				transform: rotate(27deg);
-				transform-origin: 50% 8%;
-				transition: transform 700ms cubic-bezier(0.2, 0.75, 0.25, 1);
-			}
-
-			.tone-arm.is-lowered {
-				transform: rotate(9deg);
-			}
-
-			@keyframes vinyl-spin {
-				to { transform: rotate(1turn); }
-			}
-
-			@media (prefers-reduced-motion: reduce) {
-				.vinyl-disc.is-playing { animation: none; }
-				.media-spinner { animation: none; }
-				.tone-arm { transition-duration: 0.01ms; }
-			}
-		</style>
+		<link rel="stylesheet" href="/fonts/fonts.css" />
+		<link rel="stylesheet" href="/src/style.css" />
 	</head>
 		<body class="min-h-screen bg-mahogany-950 font-interface text-parchment antialiased selection:bg-sage selection:text-mahogany-950">
 			<div class="min-h-screen pb-28 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
@@ -284,17 +220,29 @@
 			<audio id="deck-a-audio" preload="metadata"></audio>
 			<audio id="deck-b-audio" preload="metadata"></audio>
 			<p id="player-status" class="sr-only" role="status" aria-live="polite"></p>
-			<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+			<script src="/lucide.min.js"></script>
 			<script>
+				// Initialisation des icônes vectorielles Lucide
 				lucide.createIcons();
 
+				/* ==========================================================================
+				   1. CONSTANTES & CONFIGURATION
+				   ========================================================================== */
+				// Formats audio et vidéo pris en charge par l'application
 				const supportedExtensions = new Set(["aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav", "weba"]);
 				const videoExtensions = new Set(["avi", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "ogv", "webm", "wmv"]);
-				const tracks = [];
-				const trackKeys = new Set();
+
+				/* ==========================================================================
+				   2. RÉFÉRENCES DU DOM
+				   ========================================================================== */
+				// Entrées de fichiers et dossiers
 				const audioFiles = document.getElementById("audio-files");
 				const audioFolder = document.getElementById("audio-folder");
 				const mediaFolder = document.getElementById("media-folder");
+				const videoFilesInput = document.getElementById("video-files");
+				const coverFileInput = document.getElementById("cover-file");
+
+				// Éléments de la bibliothèque audio
 				const trackList = document.getElementById("track-list");
 				const trackCount = document.getElementById("track-count");
 				const libraryEmpty = document.getElementById("library-empty");
@@ -304,28 +252,31 @@
 				const importStatus = document.getElementById("import-status");
 				const toggleLibrary = document.getElementById("toggle-library");
 				const libraryContent = document.getElementById("library-content");
+				const trackView = document.getElementById("track-view");
+				const artistView = document.getElementById("artist-view");
+				const listeningView = document.getElementById("listening-view");
+
+				// Éléments de gestion des playlists
 				const playlistFilter = document.getElementById("playlist-filter");
 				const playlistTarget = document.getElementById("playlist-target");
 				const playlistForm = document.getElementById("playlist-form");
 				const playlistNameInput = document.getElementById("playlist-name");
 				const renamePlaylistButton = document.getElementById("rename-playlist");
 				const deletePlaylistButton = document.getElementById("delete-playlist");
-				const trackView = document.getElementById("track-view");
-				const artistView = document.getElementById("artist-view");
-				const listeningView = document.getElementById("listening-view");
-				const playlists = [];
-				const videoFilesInput = document.getElementById("video-files");
+
+				// Éléments du mode vidéo
 				const videoPlayer = document.getElementById("video-player");
 				const videoLoading = document.getElementById("video-loading");
 				const videoList = document.getElementById("video-list");
-				const coverFileInput = document.getElementById("cover-file");
+
+				// Éléments du vinyle et de la pochette
 				const coverImage = document.getElementById("vinyl-cover-image");
 				const coverSpindle = document.getElementById("vinyl-cover-spindle");
 				const coverBackdrop = document.getElementById("cover-backdrop");
 				const coverBackdropImage = document.getElementById("cover-backdrop-image");
 				const coverStatus = document.getElementById("cover-status");
-				const videos = [];
-				let currentVideo = null;
+
+				// Panneaux et boutons de changement de mode
 				const audioModePanel = document.getElementById("audio-mode");
 				const videoModePanel = document.getElementById("video-mode");
 				const mixModePanel = document.getElementById("mix-mode");
@@ -334,7 +285,11 @@
 					video: document.getElementById("mode-video"),
 					mix: document.getElementById("mode-mix"),
 				};
+
+				// Moteur audio principal
 				const audioEngine = document.getElementById("audio-engine");
+
+				// Platines A et B du mode DJ Mix
 				const deckA = {
 					name: "A",
 					audio: document.getElementById("deck-a-audio"),
@@ -354,6 +309,8 @@
 					disc: document.getElementById("deck-b-disc"),
 				};
 				const crossfader = document.getElementById("crossfader");
+
+				// Contrôles du Mini-Player / Barre de lecture
 				const playerStatus = document.getElementById("player-status");
 				const togglePlaybackButton = document.getElementById("toggle-playback");
 				const previousTrackButton = document.getElementById("previous-track");
@@ -371,30 +328,88 @@
 				const playbackSpinner = document.getElementById("playback-spinner");
 				const queueList = document.getElementById("queue-list");
 				const queueCount = document.getElementById("queue-count");
+
+				/* ==========================================================================
+				   3. ÉTAT GLOBAL DE L'APPLICATION
+				   ========================================================================== */
+				// Collection audio et vidéos
+				const tracks = [];
+				const trackKeys = new Set();
+				const playlists = [];
+				const videos = [];
+
+				// État de la lecture audio
 				let currentTrack = null;
+				let isPlaybackStarting = false;
+				let playRequest = 0;
+				let crackleContext = null;
+
+				// Options de transport audio (Aléatoire, Queue, Répétition)
 				let isShuffleEnabled = false;
 				let queueMode = true;
-				let repeatMode = 0;
+				let repeatMode = 0; // 0: off, 1: repeat all, 2: repeat one
+
+				// Files d'attente (Queue)
 				let activeQueue = [];
 				let savedQueueKeys = null;
 				let activeMediaQueue = [];
 				let activeMediaQueueIndex = -1;
-				let isPlaybackStarting = false;
-				let playRequest = 0;
-				let crackleContext = null;
+
+				// État de la vidéo
+				let currentVideo = null;
+
+				// Suivi du temps d'écoute (odomètre de session)
 				let accumulatedListeningSeconds = 0;
 				let lastPlaybackTick = 0;
-				let activePlaylistId = "all";
-				let activeLibraryView = "tracks";
-				let nextTrackId = 1;
-				let nextPlaylistId = 1;
 				let lastListeningRenderAt = 0;
 
+				// Vues et sélections actives
+				let activePlaylistId = "all";
+				let activeLibraryView = "tracks"; // "tracks" | "artists" | "listening"
+				let nextTrackId = 1;
+				let nextPlaylistId = 1;
+
+				/* ==========================================================================
+				   4. UTILITAIRES DE FORMATAGE
+				   ========================================================================== */
+				/**
+				 * Formate un nombre de secondes en chaîne "m:ss".
+				 * @param {number} seconds
+				 * @returns {string}
+				 */
 				function formatTime(seconds) {
 					if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
 					return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 				}
 
+				/**
+				 * Formate une taille en octets en chaîne lisible (Ko / Mo).
+				 * @param {number} bytes
+				 * @returns {string}
+				 */
+				function formatFileSize(bytes) {
+					if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
+					return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+				}
+
+				/**
+				 * Déduit le nom de l'artiste à partir de l'arborescence du fichier.
+				 * @param {object} track
+				 * @returns {string}
+				 */
+				function getArtistName(track) {
+					const folders = track.path.split("/").slice(0, -1);
+					if (folders.length > 1) return folders[1];
+					return folders[0] || "Artiste inconnu";
+				}
+
+				/* ==========================================================================
+				   5. GESTION DE LA POCHETTE & ARRIÈRE-PLAN DYNAMIQUE
+				   ========================================================================== */
+				/**
+				 * Applique une pochette personnalisée sur le vinyle et l'arrière-plan flouté.
+				 * @param {string} dataUrl
+				 */
 				function applyCover(dataUrl) {
 					coverImage.style.backgroundImage = `url("${dataUrl}")`;
 					coverImage.hidden = false;
@@ -405,6 +420,9 @@
 					document.getElementById("remove-cover").hidden = false;
 				}
 
+				/**
+				 * Réinitialise la pochette par défaut du vinyle et retire le flou d'arrière-plan.
+				 */
 				function removeCover() {
 					localStorage.removeItem("sillon-cover");
 					coverImage.style.backgroundImage = "none";
@@ -417,6 +435,11 @@
 					coverStatus.textContent = "Pochette retirée.";
 				}
 
+				/**
+				 * Redimensionne et compresse l'image sélectionnée via un Canvas pour le stockage local.
+				 * @param {File} file
+				 * @returns {Promise<string>}
+				 */
 				async function prepareCover(file) {
 					if (!file.type.startsWith("image/")) throw new Error("Choisissez un fichier image.");
 					const bitmap = await createImageBitmap(file);
@@ -443,6 +466,7 @@
 					});
 				}
 
+				// Restauration de la pochette enregistrée au chargement
 				try {
 					const savedCover = localStorage.getItem("sillon-cover");
 					if (savedCover) applyCover(savedCover);
@@ -450,23 +474,13 @@
 					coverStatus.textContent = "La pochette enregistrée n’a pas pu être chargée.";
 				}
 
-				document.getElementById("choose-cover").addEventListener("click", () => coverFileInput.click());
-				document.getElementById("remove-cover").addEventListener("click", removeCover);
-				coverFileInput.addEventListener("change", async (event) => {
-					const file = event.target.files?.[0];
-					if (!file) return;
-					coverStatus.textContent = "Préparation de la pochette…";
-					try {
-						const dataUrl = await prepareCover(file);
-						localStorage.setItem("sillon-cover", dataUrl);
-						applyCover(dataUrl);
-						coverStatus.textContent = "Pochette enregistrée.";
-					} catch (error) {
-						coverStatus.textContent = error instanceof Error ? error.message : "Impossible d’enregistrer cette pochette.";
-					}
-					event.target.value = "";
-				});
-
+				/* ==========================================================================
+				   6. MOTEUR AUDIO, PLATINE VINYLE & TRANSPORT
+				   ========================================================================== */
+				/**
+				 * Met à jour l'état visuel du lecteur (bouton play/pause, rotation vinyle, bras de lecture).
+				 * @param {boolean} playing
+				 */
 				function updatePlaybackUI(playing) {
 					document.getElementById("play-icon").classList.toggle("hidden", playing);
 					document.getElementById("pause-icon").classList.toggle("hidden", !playing);
@@ -487,6 +501,9 @@
 					document.getElementById("tone-arm").classList.toggle("is-lowered", playing);
 				}
 
+				/**
+				 * Active ou désactive les contrôles de transport selon la présence de morceaux.
+				 */
 				function updateTransportAvailability() {
 					const hasTracks = tracks.length > 0;
 					const hasMedia = hasTracks || activeMediaQueue.length > 0;
@@ -524,6 +541,9 @@
 					seekSlider.classList.toggle("opacity-45", seekSlider.disabled);
 				}
 
+				/**
+				 * Actualise la barre de progression temporelle et cumule le temps d'écoute (odomètre).
+				 */
 				function updateProgress() {
 					const duration = audioEngine.duration;
 					const currentTime = audioEngine.currentTime;
@@ -554,6 +574,10 @@
 					}
 				}
 
+				/**
+				 * Génère un effet sonore réaliste de craquement de vinyle via Web Audio API.
+				 * @returns {Promise<void>}
+				 */
 				function playVinylCrackle() {
 					const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
 					if (!AudioContextConstructor) return Promise.resolve();
@@ -584,6 +608,9 @@
 					}
 				}
 
+				/**
+				 * Démarre la lecture audio avec effet de craquement préalable si la piste est au début.
+				 */
 				async function startPlayback() {
 					if (!currentTrack) return;
 					const request = ++playRequest;
@@ -604,6 +631,10 @@
 					}
 				}
 
+				/**
+				 * Sélectionne une piste audio, met à jour les étiquettes et démarre sa lecture.
+				 * @param {object} track
+				 */
 				function selectTrack(track) {
 					if (!track) return;
 					setPlayerMode("audio");
@@ -644,6 +675,9 @@
 					startPlayback();
 				}
 
+				/**
+				 * Bascule entre la lecture et la pause pour la piste courante.
+				 */
 				function togglePlayback() {
 					if (isPlaybackStarting) {
 						playRequest++;
@@ -660,6 +694,10 @@
 					else audioEngine.pause();
 				}
 
+				/**
+				 * Sélectionne un indice aléatoire différent de la piste actuelle pour le mode Shuffle.
+				 * @returns {number}
+				 */
 				function chooseRandomTrackIndex() {
 					if (tracks.length < 2) return tracks.length ? 0 : -1;
 					const currentIndex = tracks.indexOf(currentTrack);
@@ -668,12 +706,15 @@
 					return nextIndex;
 				}
 
+				/**
+				 * Passe à la piste ou au média suivant dans la file ou la bibliothèque.
+				 */
 				function moveToNextTrack() {
 					if (!tracks.length && !activeMediaQueue.length) return;
 					if (queueMode) {
 						if (activeMediaQueue.length) {
 							advanceMediaQueue(1);
-						return;
+							return;
 						}
 						const nextTrack = getNextTrackFromQueue();
 						if (nextTrack) {
@@ -695,6 +736,9 @@
 					selectTrack(tracks[nextIndex]);
 				}
 
+				/**
+				 * Recule au début de la piste courante ou passe à la piste précédente.
+				 */
 				function moveToPreviousTrack() {
 					if (queueMode && activeMediaQueue.length) {
 						const currentEntry = activeMediaQueue[activeMediaQueueIndex];
@@ -721,6 +765,9 @@
 					selectTrack(tracks[previousIndex]);
 				}
 
+				/**
+				 * Met à jour le bouton de répétition (Cycle : Désactivé -> Répéter tout -> Répéter 1).
+				 */
 				function updateRepeatButton() {
 					const labels = ["Répétition désactivée", "Répéter toute la collection", "Répéter cette piste"];
 					repeatButton.setAttribute("aria-label", labels[repeatMode]);
@@ -728,6 +775,9 @@
 					repeatButton.classList.toggle("text-sage", repeatMode !== 0);
 				}
 
+				/* ==========================================================================
+				   7. GESTION DE LA FILE D'ATTENTE (QUEUE)
+				   ========================================================================== */
 				function getQueueStorageKey() {
 					return `sillon-queue-${activePlaylistId}`;
 				}
@@ -736,6 +786,9 @@
 					return track.queueKey || `${track.path}:${track.file.size}:${track.file.lastModified}`;
 				}
 
+				/**
+				 * Charge l'ordre de la file d'attente sauvegardé dans le stockage local.
+				 */
 				function loadQueueOrder() {
 					try {
 						const stored = localStorage.getItem(getQueueStorageKey());
@@ -747,6 +800,9 @@
 					}
 				}
 
+				/**
+				 * Sauvegarde l'ordre de la file d'attente dans le stockage local.
+				 */
 				function saveQueueOrder() {
 					const loadedKeys = new Set(tracks.map(getTrackQueueKey));
 					const unloadedKeys = (savedQueueKeys || []).filter((key) => !loadedKeys.has(key));
@@ -754,6 +810,9 @@
 					localStorage.setItem(getQueueStorageKey(), JSON.stringify(savedQueueKeys));
 				}
 
+				/**
+				 * Reconstruit la file d'attente en tenant compte de l'ordre persistant et des ajouts récents.
+				 */
 				function buildQueueFromSavedOrder(pool, newlyAdded = []) {
 					if (savedQueueKeys === null) return pool;
 					const tracksByKey = new Map(pool.map((track) => [getTrackQueueKey(track), track]));
@@ -764,6 +823,9 @@
 					return queue;
 				}
 
+				/**
+				 * Déplace une piste vers le haut ou le bas dans la file d'attente.
+				 */
 				function moveQueueTrack(index, offset) {
 					const destination = index + offset;
 					if (destination < 0 || destination >= activeQueue.length) return;
@@ -772,6 +834,9 @@
 					renderQueue();
 				}
 
+				/**
+				 * Génère le rendu visuel de la file d'attente.
+				 */
 				function renderQueue() {
 					if (!queueList) return;
 					const hasMediaQueue = activeMediaQueue.length > 0;
@@ -852,15 +917,15 @@
 					if (destination < 0 || destination >= activeMediaQueue.length) {
 						if (offset > 0) {
 							if (currentTrack) updatePlaybackUI(false);
-						if (currentVideo) document.getElementById("video-status").textContent = "Fin de la file multimédia.";
-						else playerStatus.textContent = "Fin de la file multimédia.";
-						activeMediaQueue = [];
-						activeMediaQueueIndex = -1;
-						renderQueue();
-						renderVideoQueue();
-						updateTransportAvailability();
-						updateQueueButton();
-					}
+							if (currentVideo) document.getElementById("video-status").textContent = "Fin de la file multimédia.";
+							else playerStatus.textContent = "Fin de la file multimédia.";
+							activeMediaQueue = [];
+							activeMediaQueueIndex = -1;
+							renderQueue();
+							renderVideoQueue();
+							updateTransportAvailability();
+							updateQueueButton();
+						}
 						return false;
 					}
 					activeMediaQueueIndex = destination;
@@ -870,6 +935,13 @@
 					return true;
 				}
 
+				/* ==========================================================================
+				   8. MODES DU LECTEUR (AUDIO, VIDÉO, MIX DJ)
+				   ========================================================================== */
+				/**
+				 * Active l'un des 3 modes principaux et suspend les flux des autres modes.
+				 * @param {"audio" | "video" | "mix"} mode
+				 */
 				function setPlayerMode(mode) {
 					const panels = { audio: audioModePanel, video: videoModePanel, mix: mixModePanel };
 					for (const [name, panel] of Object.entries(panels)) {
@@ -890,6 +962,12 @@
 					}
 				}
 
+				/* ==========================================================================
+				   9. SALLE DE PROJECTION (MODE VIDÉO)
+				   ========================================================================== */
+				/**
+				 * Affiche la liste des vidéos importées.
+				 */
 				function renderVideoQueue() {
 					const hasMediaQueue = activeMediaQueue.length > 0;
 					const queue = hasMediaQueue ? activeMediaQueue : videos.map((video) => ({ type: "video", item: video }));
@@ -920,6 +998,9 @@
 					document.getElementById("video-empty").hidden = hasMediaQueue || videos.length > 0;
 				}
 
+				/**
+				 * Importe des fichiers vidéo et les insère dans la file vidéo.
+				 */
 				function importVideos(fileList, options = {}) {
 					const autoStart = options.autoStart !== false;
 					const folderQueueImport = options.folderQueueImport === true;
@@ -950,6 +1031,9 @@
 					return newlyAdded;
 				}
 
+				/**
+				 * Démarre la lecture de la vidéo sélectionnée.
+				 */
 				function selectVideo(video) {
 					if (!video) return;
 					const mediaQueueIndex = activeMediaQueue.findIndex((entry) => entry.type === "video" && entry.item === video);
@@ -993,6 +1077,7 @@
 					});
 				}
 
+				// Événements du lecteur vidéo HTML5
 				videoPlayer.addEventListener("loadstart", () => { videoLoading.hidden = false; });
 				videoPlayer.addEventListener("waiting", () => { if (!videoPlayer.paused) videoLoading.hidden = false; });
 				videoPlayer.addEventListener("loadeddata", () => { videoLoading.hidden = true; });
@@ -1021,6 +1106,12 @@
 					else document.getElementById("video-status").textContent = "Fin de la file vidéo.";
 				});
 
+				/* ==========================================================================
+				   10. MODE DJ MIX (DOUBLE PLATINE & CROSSFADER)
+				   ========================================================================== */
+				/**
+				 * Rafraîchit les listes déroulantes de pistes pour les platines A et B.
+				 */
 				function renderDeckOptions() {
 					for (const deck of [deckA, deckB]) {
 						const selectedTrackId = deck.select.value;
@@ -1031,6 +1122,9 @@
 					}
 				}
 
+				/**
+				 * Applique la courbe logarithmique de volume entre le Deck A et le Deck B.
+				 */
 				function applyCrossfader() {
 					const position = Number(crossfader.value) / 100;
 					deckA.audio.volume = Math.cos(position * Math.PI / 2) * 0.65;
@@ -1039,6 +1133,9 @@
 					document.getElementById("crossfader-value").textContent = label;
 				}
 
+				/**
+				 * Met à jour les icônes play/pause et la rotation de platine d'un deck.
+				 */
 				function updateDeckPlayback(deck, playing) {
 					const prefix = `deck-${deck.name.toLowerCase()}`;
 					document.getElementById(`${prefix}-play-icon`).classList.toggle("hidden", playing);
@@ -1047,6 +1144,9 @@
 					deck.disc.classList.toggle("is-playing", playing);
 				}
 
+				/**
+				 * Charge la piste sélectionnée sur la platine spécifiée.
+				 */
 				function selectDeckTrack(deck) {
 					const track = tracks.find((item) => String(item.id) === deck.select.value);
 					deck.audio.pause();
@@ -1067,6 +1167,9 @@
 					updateDeckPlayback(deck, false);
 				}
 
+				/**
+				 * Bascule lecture/pause sur une platine DJ donnée.
+				 */
 				function toggleDeckPlayback(deck) {
 					if (!deck.select.value) return;
 					if (deck.audio.paused) {
@@ -1076,6 +1179,9 @@
 					} else deck.audio.pause();
 				}
 
+				/**
+				 * Met à jour la position de progression temporelle sur une platine DJ.
+				 */
 				function updateDeckProgress(deck) {
 					const duration = deck.audio.duration;
 					deck.seek.disabled = !Number.isFinite(duration) || duration <= 0;
@@ -1083,12 +1189,22 @@
 					deck.time.textContent = formatTime(deck.audio.currentTime);
 				}
 
+				/* ==========================================================================
+				   11. GESTION DES PLAYLISTS
+				   ========================================================================== */
+				/**
+				 * Retourne les pistes appartenant à la playlist active (ou toutes les pistes).
+				 * @returns {Array<object>}
+				 */
 				function getTracksInActivePlaylist() {
 					if (activePlaylistId === "all") return tracks;
 					const playlist = playlists.find((item) => item.id === activePlaylistId);
 					return playlist ? tracks.filter((track) => playlist.trackIds.has(track.id)) : tracks;
 				}
 
+				/**
+				 * Met à jour la visibilité des boutons Renommer / Supprimer une playlist.
+				 */
 				function syncPlaylistControls() {
 					const activePlaylist = playlists.find((item) => item.id === activePlaylistId);
 					const canManage = Boolean(activePlaylist) && activePlaylistId !== "all";
@@ -1102,6 +1218,9 @@
 					deletePlaylistButton.title = canManage ? `Supprimer ${activePlaylist.name}` : "Aucune playlist sélectionnée";
 				}
 
+				/**
+				 * Sauvegarde les playlists dans le localStorage.
+				 */
 				function savePlaylists() {
 					const persisted = playlists.map((playlist) => ({
 						id: playlist.id,
@@ -1111,6 +1230,9 @@
 					localStorage.setItem("sillon-playlists", JSON.stringify(persisted));
 				}
 
+				/**
+				 * Charge les playlists depuis le localStorage.
+				 */
 				function loadPlaylists() {
 					const raw = localStorage.getItem("sillon-playlists");
 					if (!raw) return;
@@ -1129,6 +1251,9 @@
 					}
 				}
 
+				/**
+				 * Rafraîchit les sélecteurs de playlist (Filtre de vue et Ajout de pistes).
+				 */
 				function refreshPlaylistSelectors() {
 					const previousFilter = activePlaylistId;
 					const previousTarget = playlistTarget.value;
@@ -1144,6 +1269,9 @@
 					syncPlaylistControls();
 				}
 
+				/**
+				 * Supprime la playlist actuellement sélectionnée.
+				 */
 				function deleteSelectedPlaylist() {
 					if (activePlaylistId === "all") return;
 					const playlist = playlists.find((item) => item.id === activePlaylistId);
@@ -1163,6 +1291,9 @@
 					renderLibraryView();
 				}
 
+				/**
+				 * Renomme la playlist sélectionnée.
+				 */
 				function renameSelectedPlaylist() {
 					if (activePlaylistId === "all") return;
 					const playlist = playlists.find((item) => item.id === activePlaylistId);
@@ -1178,12 +1309,13 @@
 					renderLibraryView();
 				}
 
-				function getArtistName(track) {
-					const folders = track.path.split("/").slice(0, -1);
-					if (folders.length > 1) return folders[1];
-					return folders[0] || "Artiste inconnu";
-				}
-
+				/* ==========================================================================
+				   12. VUES DE LA BIBLIOTHÈQUE (MORCEAUX, ARTISTES, ÉCOUTE)
+				   ========================================================================== */
+				/**
+				 * Bascule entre les 3 vues de la bibliothèque audio.
+				 * @param {"tracks" | "artists" | "listening"} view
+				 */
 				function setLibraryView(view) {
 					activeLibraryView = view;
 					const views = [
@@ -1203,11 +1335,12 @@
 					renderLibraryView();
 				}
 
-				function formatFileSize(bytes) {
-					if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
-					return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-				}
-
+				/**
+				 * Crée un élément HTML de ligne pour afficher une piste dans une liste.
+				 * @param {object} track
+				 * @param {number} index
+				 * @returns {HTMLLIElement}
+				 */
 				function createTrackRow(track, index) {
 					const item = document.createElement("li");
 					item.className = "grid grid-cols-[2rem_minmax(0,1fr)_auto_auto] items-center gap-2 py-3 sm:gap-4";
@@ -1267,6 +1400,9 @@
 					return item;
 				}
 
+				/**
+				 * Génère la vue par morceaux avec filtre de recherche textuelle.
+				 */
 				function renderTracks() {
 					const query = trackSearch.value.trim().toLocaleLowerCase("fr");
 					const playlistTracks = getTracksInActivePlaylist();
@@ -1282,6 +1418,9 @@
 					lucide.createIcons();
 				}
 
+				/**
+				 * Génère la vue groupée par artistes.
+				 */
 				function renderArtists() {
 					const groups = new Map();
 					for (const track of getTracksInActivePlaylist()) {
@@ -1314,6 +1453,9 @@
 					lucide.createIcons();
 				}
 
+				/**
+				 * Génère la vue de statistiques d'écoute (temps d'écoute cumulé et morceaux favoris).
+				 */
 				function renderListening() {
 					const listenedTracks = getTracksInActivePlaylist().filter((track) => track.listenedSeconds > 0).sort((first, second) => second.listenedSeconds - first.listenedSeconds);
 					const totalMinutes = Math.floor(accumulatedListeningSeconds / 60);
@@ -1354,12 +1496,22 @@
 					listeningView.append(list);
 				}
 
+				/**
+				 * Affiche la vue active de la bibliothèque.
+				 */
 				function renderLibraryView() {
 					if (activeLibraryView === "tracks") renderTracks();
 					if (activeLibraryView === "artists") renderArtists();
 					if (activeLibraryView === "listening") renderListening();
 				}
 
+				/* ==========================================================================
+				   13. IMPORT DE DOSSIERS ET FICHIERS MULTIMÉDIA
+				   ========================================================================== */
+				/**
+				 * Traite l'import d'un dossier entier (fichiers audio et vidéo triés).
+				 * @param {FileList|Array<File>} fileList
+				 */
 				function importFolderEntries(fileList) {
 					const sortedFiles = [...fileList].sort((first, second) => {
 						const left = (first.webkitRelativePath || first.name).toLowerCase();
@@ -1398,6 +1550,11 @@
 					else if (mediaQueue[0]?.type === "video") selectVideo(mediaQueue[0].item);
 				}
 
+				/**
+				 * Importe des fichiers audio dans la bibliothèque de l'application.
+				 * @param {FileList|Array<File>} fileList
+				 * @param {object} options
+				 */
 				function importTracks(fileList, options = {}) {
 					const autoStart = options.autoStart !== false;
 					const folderQueueImport = options.folderQueueImport === true;
@@ -1449,11 +1606,35 @@
 					if (autoStart && !currentTrack && newlyAdded.length) selectTrack(newlyAdded[0]);
 					else if (autoStart && !currentTrack && tracks.length) selectTrack(tracks[0]);
 				}
+
+				/* ==========================================================================
+				   14. ÉCOUTEURS D'ÉVÉNEMENTS & INTERACTIONS UTILISATEUR
+				   ========================================================================== */
+				// Gestion de la pochette
+				document.getElementById("choose-cover").addEventListener("click", () => coverFileInput.click());
+				document.getElementById("remove-cover").addEventListener("click", removeCover);
+				coverFileInput.addEventListener("change", async (event) => {
+					const file = event.target.files?.[0];
+					if (!file) return;
+					coverStatus.textContent = "Préparation de la pochette…";
+					try {
+						const dataUrl = await prepareCover(file);
+						localStorage.setItem("sillon-cover", dataUrl);
+						applyCover(dataUrl);
+						coverStatus.textContent = "Pochette enregistrée.";
+					} catch (error) {
+						coverStatus.textContent = error instanceof Error ? error.message : "Impossible d’enregistrer cette pochette.";
+					}
+					event.target.value = "";
+				});
+
+				// Boutons de sélection de dossiers et fichiers
 				for (const buttonId of ["choose-folder", "choose-folder-empty"]) {
 					document.getElementById(buttonId).addEventListener("click", () => mediaFolder.click());
 				}
 				document.getElementById("choose-files").addEventListener("click", () => audioFiles.click());
 				document.getElementById("choose-video").addEventListener("click", () => videoFilesInput.click());
+
 				videoFilesInput.addEventListener("change", (event) => {
 					importVideos(event.target.files);
 					event.target.value = "";
@@ -1470,7 +1651,11 @@
 					importFolderEntries(event.target.files);
 					event.target.value = "";
 				});
+
+				// Recherche dans la bibliothèque
 				trackSearch.addEventListener("input", renderLibraryView);
+
+				// Filtre par playlist
 				playlistFilter.addEventListener("change", () => {
 					activePlaylistId = playlistFilter.value;
 					playlistTarget.value = activePlaylistId === "all" ? "" : activePlaylistId;
@@ -1481,11 +1666,13 @@
 					renderLibraryView();
 				});
 				playlistTarget.addEventListener("change", renderLibraryView);
-				loadPlaylists();
-				refreshPlaylistSelectors();
+
+				// Onglets de vue de la bibliothèque (Morceaux, Artistes, Écoute)
 				for (const [view, buttonId] of [["tracks", "view-tracks"], ["artists", "view-artists"], ["listening", "view-listening"]]) {
 					document.getElementById(buttonId).addEventListener("click", () => setLibraryView(view));
 				}
+
+				// Formulaire de création / renommage / suppression de playlist
 				document.getElementById("new-playlist").addEventListener("click", () => {
 					playlistForm.classList.remove("hidden");
 					playlistForm.classList.add("flex");
@@ -1519,20 +1706,28 @@
 					playerStatus.textContent = `Playlist ${name} créée.`;
 					renderLibraryView();
 				});
+
+				// Masquer / afficher la section collection
 				toggleLibrary.addEventListener("click", () => {
 					const expanded = toggleLibrary.getAttribute("aria-expanded") === "true";
 					toggleLibrary.setAttribute("aria-expanded", String(!expanded));
 					libraryContent.hidden = expanded;
 					document.getElementById("toggle-library-label").textContent = expanded ? "Afficher" : "Masquer";
 				});
+
+				// Changement de mode dans la barre latérale
 				modeButtons.audio.addEventListener("click", () => setPlayerMode("audio"));
 				modeButtons.video.addEventListener("click", () => setPlayerMode("video"));
 				modeButtons.mix.addEventListener("click", () => setPlayerMode("mix"));
+
+				// Événements du mode DJ Mix
 				for (const deck of [deckA, deckB]) {
 					deck.select.addEventListener("change", () => selectDeckTrack(deck));
 					deck.button.addEventListener("click", () => toggleDeckPlayback(deck));
 					deck.seek.addEventListener("input", () => {
-						if (Number.isFinite(deck.audio.duration) && deck.audio.duration > 0) deck.audio.currentTime = Number(deck.seek.value) / 1000 * deck.audio.duration;
+						if (Number.isFinite(deck.audio.duration) && deck.audio.duration > 0) {
+							deck.audio.currentTime = Number(deck.seek.value) / 1000 * deck.audio.duration;
+						}
 					});
 					deck.audio.addEventListener("loadedmetadata", () => updateDeckProgress(deck));
 					deck.audio.addEventListener("durationchange", () => updateDeckProgress(deck));
@@ -1542,14 +1737,8 @@
 					deck.audio.addEventListener("ended", () => updateDeckPlayback(deck, false));
 				}
 				crossfader.addEventListener("input", applyCrossfader);
-				refreshPlaylistSelectors();
-				savedQueueKeys = loadQueueOrder();
-				activeQueue = buildQueueFromSavedOrder(getTracksInActivePlaylist());
-				renderQueue();
-				renderLibraryView();
-				renderDeckOptions();
-				applyCrossfader();
 
+				// Événements des contrôles de transport du Mini-Player
 				togglePlaybackButton.addEventListener("click", togglePlayback);
 				previousTrackButton.addEventListener("click", moveToPreviousTrack);
 				nextTrackButton.addEventListener("click", moveToNextTrack);
@@ -1568,6 +1757,8 @@
 						audioEngine.currentTime = Number(seekSlider.value) / 1000 * audioEngine.duration;
 					}
 				});
+
+				// Sliders de volume synchronisés (Desktop vertical et Mobile horizontal)
 				for (const slider of [volumeSlider, mobileVolumeSlider]) {
 					slider.addEventListener("input", () => {
 						audioEngine.volume = Number(slider.value) / 100;
@@ -1577,11 +1768,14 @@
 					});
 				}
 				audioEngine.volume = Number(volumeSlider.value) / 100;
+
 				queueButton.addEventListener("click", () => {
 					queueMode = !queueMode;
 					updateQueueButton();
 					playerStatus.textContent = queueMode ? "Lecture automatique activée." : "Lecture automatique désactivée.";
 				});
+
+				// Événements du moteur audio principal
 				audioEngine.addEventListener("play", () => {
 					isPlaybackStarting = false;
 					updatePlaybackUI(true);
@@ -1605,10 +1799,10 @@
 				audioEngine.addEventListener("ended", () => {
 					isPlaybackStarting = false;
 					playbackSpinner.hidden = true;
-						if (queueMode && activeMediaQueue.length) {
-							advanceMediaQueue(1);
-							return;
-						}
+					if (queueMode && activeMediaQueue.length) {
+						advanceMediaQueue(1);
+						return;
+					}
 					if (queueMode) {
 						const nextTrack = getNextTrackFromQueue();
 						if (nextTrack) {
@@ -1635,11 +1829,25 @@
 					playbackStatus.textContent = "Format non pris en charge";
 					playerStatus.textContent = `Le navigateur ne peut pas lire ${currentTrack.name}.`;
 				});
+
+				// Libération des ressources (Objets URL Blob et AudioContext)
 				window.addEventListener("pagehide", () => {
 					for (const track of tracks) if (track.objectUrl) URL.revokeObjectURL(track.objectUrl);
 					for (const video of videos) URL.revokeObjectURL(video.objectUrl);
 					if (crackleContext) crackleContext.close();
 				});
+
+				/* ==========================================================================
+				   15. INITIALISATION AU DÉMARRAGE
+				   ========================================================================== */
+				loadPlaylists();
+				refreshPlaylistSelectors();
+				savedQueueKeys = loadQueueOrder();
+				activeQueue = buildQueueFromSavedOrder(getTracksInActivePlaylist());
+				renderQueue();
+				renderLibraryView();
+				renderDeckOptions();
+				applyCrossfader();
 				updateTransportAvailability();
 				updatePlaybackUI(false);
 				updateRepeatButton();

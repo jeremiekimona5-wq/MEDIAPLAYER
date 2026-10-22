@@ -100,8 +100,8 @@ Un design trop “gaming” je veux un rendu cozy, vintage mais pas ringard ou d
 Le but est que l’interface fasse envie et rend nostalgique sans fatiguer l’œil.
 
 
-# ELEMENTS A AJOUTER
--changer emplacement barrete
-ajouter commentaire
-ajouter fichier README.md
-avoir version desktop avec tauri
+# ELEMENTS A AJOUTER / SUIVI
+- [ ] changer emplacement barrette
+- [x] ajouter commentaires structurés dans le code
+- [x] ajouter fichier README.md
+- [x] configurer version desktop avec Tauri (Tauri v2 configuré, build web validé)
