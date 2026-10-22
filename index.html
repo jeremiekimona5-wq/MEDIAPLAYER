@@ -1199,7 +1199,8 @@
 				function getTracksInActivePlaylist() {
 					if (activePlaylistId === "all") return tracks;
 					const playlist = playlists.find((item) => item.id === activePlaylistId);
-					return playlist ? tracks.filter((track) => playlist.trackIds.has(track.id)) : tracks;
+					// Adhérences mémorisées par queueKey (chemin + taille + date), pas par id de session
+					return playlist ? tracks.filter((track) => playlist.trackKeys.has(getTrackQueueKey(track))) : tracks;
 				}
 
 				/**
@@ -1225,7 +1226,7 @@
 					const persisted = playlists.map((playlist) => ({
 						id: playlist.id,
 						name: playlist.name,
-						trackIds: [...playlist.trackIds],
+						trackKeys: [...playlist.trackKeys],
 					}));
 					localStorage.setItem("sillon-playlists", JSON.stringify(persisted));
 				}
@@ -1242,7 +1243,10 @@
 						playlists.length = 0;
 						for (const item of parsed) {
 							if (!item || typeof item.id !== "string" || typeof item.name !== "string") continue;
-							playlists.push({ id: item.id, name: item.name, trackIds: new Set(Array.isArray(item.trackIds) ? item.trackIds : []) });
+							// V1 persistait des "trackIds" d'ids de session (incohérents après redémarrage) :
+							// migration silencieuse vers les queueKey, les anciens contenus sont vides.
+							const keys = Array.isArray(item.trackKeys) ? item.trackKeys.filter((key) => typeof key === "string") : [];
+							playlists.push({ id: item.id, name: item.name, trackKeys: new Set(keys) });
 						}
 						const ids = playlists.map((item) => Number.parseInt(item.id.replace(/\D+/g, ""), 10)).filter(Number.isFinite);
 						nextPlaylistId = ids.length ? Math.max(...ids) + 1 : 1;
@@ -1376,7 +1380,7 @@
 
 					const playlistId = playlistTarget.value;
 					const playlist = playlists.find((item) => item.id === playlistId);
-					const isInPlaylist = Boolean(playlist?.trackIds.has(track.id));
+					const isInPlaylist = Boolean(playlist?.trackKeys.has(getTrackQueueKey(track)));
 					const playlistButton = document.createElement("button");
 					playlistButton.type = "button";
 					playlistButton.disabled = !playlist;
@@ -1390,8 +1394,8 @@
 					playlistButton.append(playlistIcon);
 					playlistButton.addEventListener("click", () => {
 						if (!playlist) return;
-						if (isInPlaylist) playlist.trackIds.delete(track.id);
-						else playlist.trackIds.add(track.id);
+						if (isInPlaylist) playlist.trackKeys.delete(getTrackQueueKey(track));
+						else playlist.trackKeys.add(getTrackQueueKey(track));
 						savePlaylists();
 						renderLibraryView();
 					});
@@ -1689,7 +1693,7 @@
 					event.preventDefault();
 					const name = playlistNameInput.value.trim();
 					if (!name) return;
-					const playlist = { id: `playlist-${nextPlaylistId++}`, name, trackIds: new Set() };
+					const playlist = { id: `playlist-${nextPlaylistId++}`, name, trackKeys: new Set() };
 					playlists.push(playlist);
 					savePlaylists();
 					refreshPlaylistSelectors();
