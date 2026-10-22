@@ -102,6 +102,7 @@
 						<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
 							<div class="flex items-center gap-1 border-b border-brass/20" role="tablist" aria-label="Vues de la bibliothèque">
 								<button id="view-tracks" type="button" role="tab" aria-selected="true" aria-controls="track-view" class="min-h-10 border-b-2 border-sage px-3 text-sm text-paper">Morceaux</button>
+								<button id="view-albums" type="button" role="tab" aria-selected="false" aria-controls="album-view" class="min-h-10 border-b-2 border-transparent px-3 text-sm text-parchment/55 hover:text-paper">Albums</button>
 								<button id="view-artists" type="button" role="tab" aria-selected="false" aria-controls="artist-view" class="min-h-10 border-b-2 border-transparent px-3 text-sm text-parchment/55 hover:text-paper">Artistes</button>
 								<button id="view-listening" type="button" role="tab" aria-selected="false" aria-controls="listening-view" class="min-h-10 border-b-2 border-transparent px-3 text-sm text-parchment/55 hover:text-paper">Écoute</button>
 							</div>
@@ -144,6 +145,7 @@
 							<p id="search-empty" hidden class="py-5 text-sm text-parchment/55">Aucun morceau ne correspond à cette recherche.</p>
 							<ol id="track-list" class="divide-y divide-brass/15" aria-label="Morceaux de la collection" hidden></ol>
 						</div>
+						<div id="album-view" role="tabpanel" aria-labelledby="view-albums" hidden></div>
 						<div id="artist-view" role="tabpanel" aria-labelledby="view-artists" hidden></div>
 						<div id="listening-view" role="tabpanel" aria-labelledby="view-listening" hidden></div>
 							<p id="import-status" class="sr-only" role="status" aria-live="polite"></p>
@@ -251,6 +253,7 @@
 				const toggleLibrary = document.getElementById("toggle-library");
 				const libraryContent = document.getElementById("library-content");
 				const trackView = document.getElementById("track-view");
+				const albumView = document.getElementById("album-view");
 				const artistView = document.getElementById("artist-view");
 				const listeningView = document.getElementById("listening-view");
 
@@ -366,7 +369,7 @@
 
 				// Vues et sélections actives
 				let activePlaylistId = "all";
-				let activeLibraryView = "tracks"; // "tracks" | "artists" | "listening"
+				let activeLibraryView = "tracks"; // "tracks" | "albums" | "artists" | "listening"
 				let nextTrackId = 1;
 				let nextPlaylistId = 1;
 
@@ -402,6 +405,17 @@
 					const folders = track.path.split("/").slice(0, -1);
 					if (folders.length > 1) return folders[1];
 					return folders[0] || "Artiste inconnu";
+				}
+
+				/**
+				 * Déduit le nom de l'album à partir du dossier le plus profond du fichier.
+				 * @param {object} track
+				 * @returns {string}
+				 */
+				function getAlbumName(track) {
+					const folders = track.path.split("/").slice(0, -1);
+					if (folders.length > 1) return folders.at(-1);
+					return folders[0] || "Album inconnu";
 				}
 
 				/**
@@ -1367,16 +1381,17 @@
 				}
 
 				/* ==========================================================================
-				   12. VUES DE LA BIBLIOTHÈQUE (MORCEAUX, ARTISTES, ÉCOUTE)
+				   12. VUES DE LA BIBLIOTHÈQUE (MORCEAUX, ALBUMS, ARTISTES, ÉCOUTE)
 				   ========================================================================== */
 				/**
-				 * Bascule entre les 3 vues de la bibliothèque audio.
-				 * @param {"tracks" | "artists" | "listening"} view
+				 * Bascule entre les 4 vues de la bibliothèque audio.
+				 * @param {"tracks" | "albums" | "artists" | "listening"} view
 				 */
 				function setLibraryView(view) {
 					activeLibraryView = view;
 					const views = [
 						["tracks", trackView, document.getElementById("view-tracks")],
+						["albums", albumView, document.getElementById("view-albums")],
 						["artists", artistView, document.getElementById("view-artists")],
 						["listening", listeningView, document.getElementById("view-listening")],
 					];
@@ -1511,6 +1526,45 @@
 				}
 
 				/**
+				 * Génère la vue groupée par albums (dossier le plus profond du fichier).
+				 */
+				function renderAlbums() {
+					const groups = new Map();
+					for (const track of getTracksInActivePlaylist()) {
+						const album = getAlbumName(track);
+						if (!groups.has(album)) groups.set(album, []);
+						groups.get(album).push(track);
+					}
+					trackCount.textContent = `${groups.size} ${groups.size > 1 ? "albums" : "album"}`;
+					albumView.replaceChildren();
+					if (!groups.size) {
+						const empty = document.createElement("p");
+						empty.className = "border-y border-brass/15 py-5 text-sm text-parchment/55";
+						empty.textContent = "Aucun album dans cette sélection.";
+						albumView.append(empty);
+						return;
+					}
+					for (const [album, albumTracks] of [...groups].sort(([first], [second]) => first.localeCompare(second, "fr", { numeric: true, sensitivity: "base" }))) {
+						const group = document.createElement("section");
+						group.className = "border-b border-brass/15 py-4";
+						const heading = document.createElement("h3");
+						heading.className = "mb-1 font-display text-lg text-paper";
+						heading.textContent = album;
+						const artists = [...new Set(albumTracks.map(getArtistName))].sort((first, second) => first.localeCompare(second, "fr")).join(" · ");
+						const subtitle = document.createElement("p");
+						subtitle.className = "mb-2 text-xs text-parchment/50";
+						subtitle.textContent = `${artists} · ${albumTracks.length} ${albumTracks.length > 1 ? "titres" : "titre"}`;
+						const list = document.createElement("ol");
+						list.className = "divide-y divide-brass/10";
+						list.setAttribute("aria-label", `Morceaux de l'album ${album}`);
+						list.replaceChildren(...albumTracks.map(createTrackRow));
+						group.append(heading, subtitle, list);
+						albumView.append(group);
+					}
+					lucide.createIcons();
+				}
+
+				/**
 				 * Génère la vue de statistiques d'écoute (temps d'écoute cumulé et morceaux favoris).
 				 */
 				function renderListening() {
@@ -1558,6 +1612,7 @@
 				 */
 				function renderLibraryView() {
 					if (activeLibraryView === "tracks") renderTracks();
+					if (activeLibraryView === "albums") renderAlbums();
 					if (activeLibraryView === "artists") renderArtists();
 					if (activeLibraryView === "listening") renderListening();
 				}
@@ -1721,7 +1776,7 @@
 				playlistTarget.addEventListener("change", renderLibraryView);
 
 				// Onglets de vue de la bibliothèque (Morceaux, Artistes, Écoute)
-				for (const [view, buttonId] of [["tracks", "view-tracks"], ["artists", "view-artists"], ["listening", "view-listening"]]) {
+				for (const [view, buttonId] of [["tracks", "view-tracks"], ["albums", "view-albums"], ["artists", "view-artists"], ["listening", "view-listening"]]) {
 					document.getElementById(buttonId).addEventListener("click", () => setLibraryView(view));
 				}
 
