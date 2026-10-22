@@ -358,10 +358,13 @@
 				// État de la vidéo
 				let currentVideo = null;
 
-				// Suivi du temps d'écoute (odomètre de session)
+				// Suivi du temps d'écoute (odomètre, persisté entre les sessions)
 				let accumulatedListeningSeconds = 0;
 				let lastPlaybackTick = 0;
 				let lastListeningRenderAt = 0;
+				// Secondes d'écoute mémorisées par queueKey (clé stable chemin+taille+date)
+				let persistedListening = {};
+				let lastListeningSaveAt = 0;
 
 				// Vues et sélections actives
 				let activePlaylistId = "all";
@@ -401,6 +404,54 @@
 					const folders = track.path.split("/").slice(0, -1);
 					if (folders.length > 1) return folders[1];
 					return folders[0] || "Artiste inconnu";
+				}
+
+				/**
+				 * Rend une valeur de secondes sûre (nombre fini, positif, borné).
+				 * @param {unknown} value
+				 * @returns {number}
+				 */
+				function sanitizeListeningSeconds(value) {
+					return typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 3.6e7 ? value : 0;
+				}
+
+				/**
+				 * Charge l'odomètre persisté : total global et secondes par queueKey.
+				 */
+				function loadListeningState() {
+					try {
+						const parsed = JSON.parse(localStorage.getItem("sillon-listening"));
+						if (parsed && typeof parsed === "object") {
+							accumulatedListeningSeconds = sanitizeListeningSeconds(parsed.totalSeconds);
+							persistedListening = {};
+							if (parsed.tracks && typeof parsed.tracks === "object") {
+								for (const [key, seconds] of Object.entries(parsed.tracks)) {
+									const safe = sanitizeListeningSeconds(seconds);
+									if (typeof key === "string" && safe > 0) persistedListening[key] = safe;
+								}
+							}
+						}
+					} catch {
+						persistedListening = {};
+					}
+					// Affiche l'odomètre restauré dès le démarrage
+					const listenedMinutes = Math.floor(accumulatedListeningSeconds / 60);
+					document.getElementById("listen-time-hours").textContent = String(Math.floor(listenedMinutes / 60)).padStart(2, "0");
+					document.getElementById("listen-time-minutes").textContent = String(listenedMinutes % 60).padStart(2, "0");
+				}
+
+				/**
+				 * Sauvegarde l'odomètre (bridé à une écriture toutes les 5 s, forçable à la fermeture).
+				 */
+				function saveListeningState(force = false) {
+					const now = performance.now();
+					if (!force && now - lastListeningSaveAt < 5000) return;
+					lastListeningSaveAt = now;
+					try {
+						localStorage.setItem("sillon-listening", JSON.stringify({ totalSeconds: accumulatedListeningSeconds, tracks: persistedListening }));
+					} catch {
+						// Quota dépassé : on réessaiera lors d'une prochaine écriture
+					}
 				}
 
 				/* ==========================================================================
@@ -558,7 +609,11 @@
 							const elapsed = (now - lastPlaybackTick) / 1000;
 							if (elapsed > 0 && elapsed < 2) {
 								accumulatedListeningSeconds += elapsed;
-								if (currentTrack) currentTrack.listenedSeconds += elapsed;
+								if (currentTrack) {
+									currentTrack.listenedSeconds += elapsed;
+									persistedListening[getTrackQueueKey(currentTrack)] = currentTrack.listenedSeconds;
+								}
+								saveListeningState();
 							}
 						}
 						lastPlaybackTick = now;
@@ -1467,7 +1522,7 @@
 					listeningView.replaceChildren();
 					const summary = document.createElement("p");
 					summary.className = "mb-4 font-display text-xl text-paper";
-					summary.textContent = `${Math.floor(totalMinutes / 60)} h ${String(totalMinutes % 60).padStart(2, "0")} min d’écoute cette session`;
+					summary.textContent = `${Math.floor(totalMinutes / 60)} h ${String(totalMinutes % 60).padStart(2, "0")} min d’écoute cumulée`;
 					listeningView.append(summary);
 					if (!listenedTracks.length) {
 						const empty = document.createElement("p");
@@ -1478,7 +1533,7 @@
 					}
 					const list = document.createElement("ol");
 					list.className = "divide-y divide-brass/15";
-					list.setAttribute("aria-label", "Morceaux les plus écoutés pendant cette session");
+					list.setAttribute("aria-label", "Morceaux les plus écoutés, toutes sessions confondues");
 					for (const [index, track] of listenedTracks.entries()) {
 						const item = document.createElement("li");
 						item.className = "grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 py-3";
@@ -1587,7 +1642,7 @@
 						trackKeys.add(key);
 						const path = file.webkitRelativePath || file.name;
 						const name = file.name.replace(/\.[^.]+$/, "").replace(/^\d+\s*[-._)]*\s*/, "") || file.name;
-						const track = { id: nextTrackId++, file, name, path, queueKey: key, listenedSeconds: 0 };
+						const track = { id: nextTrackId++, file, name, path, queueKey: key, listenedSeconds: persistedListening[key] || 0 };
 						tracks.push(track);
 						newlyAdded.push(track);
 						added++;
@@ -1836,6 +1891,7 @@
 
 				// Libération des ressources (Objets URL Blob et AudioContext)
 				window.addEventListener("pagehide", () => {
+					saveListeningState(true);
 					for (const track of tracks) if (track.objectUrl) URL.revokeObjectURL(track.objectUrl);
 					for (const video of videos) URL.revokeObjectURL(video.objectUrl);
 					if (crackleContext) crackleContext.close();
@@ -1844,6 +1900,7 @@
 				/* ==========================================================================
 				   15. INITIALISATION AU DÉMARRAGE
 				   ========================================================================== */
+				loadListeningState();
 				loadPlaylists();
 				refreshPlaylistSelectors();
 				savedQueueKeys = loadQueueOrder();
